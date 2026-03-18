@@ -29,11 +29,9 @@ export function ManagementApp() {
     inviteMember,
   } = useOrganizations(user?.id);
   const {
-    activeSession,
     error: sessionError,
     createSession,
     joinSession,
-    endSession,
     leaveSession,
   } = useSessions(user?.id, currentOrg?.id);
 

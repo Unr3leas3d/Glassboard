@@ -31,10 +31,10 @@ function readPayload(): OverlayPayload {
 
 export function OverlayApp() {
   const [payload] = useState<OverlayPayload>(readPayload);
-  const { userId, userName, activeSession: initialSession, currentOrg } = payload;
+  const { userId, userName, activeSession: initialSession } = payload;
 
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
-  const [session, setSession] = useState<Session>(initialSession);
+  const [session] = useState<Session>(initialSession);
   const isHost = session.host_id === userId;
 
   // Realtime
