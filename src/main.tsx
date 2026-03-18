@@ -5,6 +5,10 @@ import "./App.css";
 const params = new URLSearchParams(window.location.search);
 const windowType = params.get("window");
 
+if (windowType === "overlay") {
+  document.body.classList.add("overlay-window");
+}
+
 async function renderApp() {
   let AppComponent: React.ComponentType;
 
