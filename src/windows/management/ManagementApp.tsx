@@ -137,10 +137,12 @@ export function ManagementApp() {
         });
 
         overlay.once("tauri://destroyed", () => {
-          overlayRef.current = null;
-          // Crash recovery: show management and clear session state
-          leaveSession();
-          showManagement();
+          // Only run crash recovery if session-ended hasn't already handled cleanup
+          if (overlayRef.current) {
+            overlayRef.current = null;
+            leaveSession();
+            showManagement();
+          }
         });
 
         overlayRef.current = overlay;

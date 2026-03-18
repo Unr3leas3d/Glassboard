@@ -1,0 +1,10 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "management",
+        "contentProtected": false
+      }
+    ]
+  }
+}

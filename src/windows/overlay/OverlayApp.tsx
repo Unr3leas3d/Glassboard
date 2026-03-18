@@ -109,16 +109,19 @@ export function OverlayApp() {
   }, []);
 
   // Listen for deactivate-laser event from management window (Cmd+Shift+D)
+  const isLaserActiveRef = useRef(isLaserActive);
+  isLaserActiveRef.current = isLaserActive;
+
   useEffect(() => {
     const unlisten = listen(EVENTS.DEACTIVATE_LASER, () => {
-      if (isLaserActive) {
+      if (isLaserActiveRef.current) {
         toggleLaser();
       }
     });
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, [isLaserActive, toggleLaser]);
+  }, [toggleLaser]);
 
   // Listen for auth sign-out (if management signs us out)
   useEffect(() => {
