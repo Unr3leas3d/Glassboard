@@ -8,7 +8,7 @@
 
 ## Context
 
-Glasboard is a macOS collaborative annotation overlay built with Tauri v2 + React 19. It uses a transparent, always-on-top, click-through overlay window for real-time Excalidraw laser drawing, plus a management window for auth, orgs, and session controls. The user wants to ship production builds for both macOS and Windows with full feature parity.
+Glasboard is a macOS collaborative annotation overlay built with Tauri v2 + React 19. It uses a transparent, always-on-top, click-through overlay window for real-time Excalidraw laser drawing, plus a 640×640 management window for auth, orgs, and session controls. The user wants to ship production builds for both macOS and Windows with full feature parity.
 
 ### Audit Summary
 
@@ -52,6 +52,8 @@ export async function initPlatform(): Promise<void>;
 | `src/components/BottomBar.tsx` | Replace `"Cmd+Shift+D"` / `"Cmd+Shift+G"` tooltip strings with `${modifierLabel}+Shift+D` etc. |
 | `src/main.tsx` | Call `initPlatform()` before `ReactDOM.createRoot()` |
 
+**`initPlatform()` scope:** Since `main.tsx` is the shared entry point for all window types (management, overlay, bottombar, sessionbar), a single `initPlatform()` call covers all windows. No per-window initialization needed.
+
 **What doesn't change:** The actual hotkey accelerator strings in `useHotkeySettings.ts` already use `CommandOrControl` — Tauri handles the mapping. No changes to registration logic.
 
 ---
@@ -60,6 +62,8 @@ export async function initPlatform(): Promise<void>;
 
 **`Cargo.toml` — conditional `macos-private-api` feature:**
 
+Remove the existing `tauri` entry from `[dependencies]` and replace with platform-specific entries:
+
 ```toml
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri = { version = "2", features = ["macos-private-api"] }
@@ -67,6 +71,17 @@ tauri = { version = "2", features = ["macos-private-api"] }
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 tauri = { version = "2", features = [] }
 ```
+
+**Note:** The existing `tauri = { version = "2", features = ["macos-private-api"] }` line in `[dependencies]` must be fully removed — Cargo unifies features across sections, so leaving it would pull `macos-private-api` on all platforms.
+
+**New dependency: `tauri-plugin-single-instance`**
+
+Add to `Cargo.toml`:
+```toml
+tauri-plugin-single-instance = "2"
+```
+
+On Windows, deep link activations (`glasboard://`) can launch a second app instance instead of routing to the running one. This plugin ensures single-instance behavior: the second launch forwards its URL to the already-running instance. Register in `lib.rs` with `.plugin(tauri_plugin_single_instance::init(...))`.
 
 **`tauri.conf.json`:**
 
@@ -82,7 +97,7 @@ Remove from `Cargo.toml`:
 screenshots = "0.2"
 ```
 
-Add to `Cargo.toml`:
+Add to `Cargo.toml` (verify latest version on crates.io before implementation):
 ```toml
 xcap = "0.0.13"
 ```
@@ -122,6 +137,8 @@ Behavior:
 - If omitted, capture the primary monitor (backwards compatible)
 - Same resize → JPEG encode → base64 pipeline as current
 
+**Internal pipeline change:** The `screenshots` crate returns PNG-encoded bytes that are decoded via `image::load_from_memory_with_format()` before re-encoding as JPEG. The `xcap` crate returns `image::RgbaImage` directly, so the intermediate PNG decode step is eliminated. The pipeline becomes: `xcap::Monitor::capture_image()` → `RgbaImage` → resize → JPEG encode → base64. The `image` crate dependency stays but `image::load_from_memory_with_format` is no longer needed.
+
 ---
 
 ### 3. Window Management & Titlebar
@@ -134,7 +151,7 @@ Behavior:
 
 On macOS: current behavior preserved (`titleBarStyle: "Overlay"`, native traffic light buttons).
 
-On Windows: the management window is created with `decorations: false`. `WindowTitleBar.tsx` becomes platform-aware:
+On Windows: the management window's decorations are removed at runtime. Since `tauri.conf.json` is static JSON (cannot branch per-platform), the config keeps `"decorations": true`. At startup, `ManagementApp.tsx` calls `getCurrentWindow().setDecorations(false)` when `isWindows` is true. `WindowTitleBar.tsx` then becomes platform-aware:
 
 ```tsx
 // WindowTitleBar.tsx
@@ -154,9 +171,9 @@ export function WindowTitleBar() {
 }
 ```
 
-Buttons call `getCurrentWindow().minimize()`, `.toggleMaximize()`, `.close()`.
+Buttons import `getCurrentWindow` from `@tauri-apps/api/window` and `isMac` from `@/utils/platform`, then call `.minimize()`, `.toggleMaximize()`, `.close()`.
 
-**`ManagementApp.tsx` change:** When creating the overlay on Windows, no additional changes needed — overlay creation params are already cross-platform. The management window itself gets `decorations: false` on Windows via the platform check.
+**`ManagementApp.tsx` change:** At startup, if `isWindows`, call `getCurrentWindow().setDecorations(false)`. Overlay creation params are already cross-platform — no changes needed there.
 
 ---
 
@@ -188,6 +205,17 @@ Buttons call `getCurrentWindow().minimize()`, `.toggleMaximize()`, `.close()`.
 ```
 
 Produces both `.exe` (NSIS) and `.msi` (WiX) installers.
+
+**WebView2 runtime:** Tauri v2 on Windows requires the Microsoft Edge WebView2 runtime. Add `webviewInstallMode` to the NSIS config to auto-bootstrap it for end users who don't have it:
+
+```json
+"nsis": {
+  "installMode": "currentUser",
+  "displayLanguageSelector": false
+}
+```
+
+Tauri v2's NSIS template downloads WebView2 bootstrapper by default if not present. No additional config needed beyond what's shown above, but this behavior should be verified during Windows build testing.
 
 **Deep link protocol:** `glasboard://` is automatically registered in the Windows registry by NSIS/WiX during installation via `tauri-plugin-deep-link`. No code changes needed.
 
@@ -245,8 +273,10 @@ No runtime detection or warning UI. Acceptable trade-off given the target audien
 | `src/windows/management/ManagementApp.tsx` | **Modify** | Decorations config based on platform |
 | `src-tauri/Cargo.toml` | **Modify** | Conditional macos-private-api, swap screenshots→xcap |
 | `src-tauri/src/screen_capture.rs` | **Modify** | Multi-monitor support via xcap, list_monitors command |
-| `src-tauri/src/lib.rs` | **Modify** | Register list_monitors command |
+| `src-tauri/src/lib.rs` | **Modify** | Register list_monitors command + single-instance plugin |
 | `src-tauri/tauri.conf.json` | **Modify** | Add NSIS + WiX bundle config |
+| `src-tauri/capabilities/overlay.json` | **Modify** | Add permissions for `list_monitors`, `capture_screen` commands |
+| `src-tauri/capabilities/management.json` | **Modify** | Add `core:window:allow-set-decorations`, `core:window:allow-toggle-maximize` permissions |
 
 ## Files Unchanged
 
@@ -284,3 +314,7 @@ No runtime detection or warning UI. Acceptable trade-off given the target audien
 | `xcap` crate has different capture behavior on Windows | Low | The crate is actively maintained with Windows CI; test multi-monitor capture on hardware |
 | Transparent overlay has rendering artifacts on Windows | Medium | Test with WebView2; if issues, investigate `WS_EX_LAYERED` with `SetLayeredWindowAttributes` |
 | NSIS/WiX build tools not installed on Windows build machine | Low | Document prerequisite: install NSIS and WiX toolset before building |
+| WebView2 not installed on end-user Windows machine | Low | Tauri NSIS installer auto-bootstraps WebView2; verify during testing |
+| Deep link launches second app instance on Windows | Medium | `tauri-plugin-single-instance` forwards deep link URL to running instance |
+| `xcap` crate API instability (v0.0.x) | Low | Pin version, verify latest before implementation; fallback: revert to `screenshots` crate |
+| WebView2 vs WebKit CSS/rendering differences | Low | Excalidraw is Chromium-tested; verify transparent background rendering on WebView2 |
