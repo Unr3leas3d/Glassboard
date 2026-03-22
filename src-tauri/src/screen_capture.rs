@@ -1,14 +1,42 @@
 use base64::{engine::general_purpose::STANDARD, Engine};
 use image::codecs::jpeg::JpegEncoder;
-use screenshots::Screenshots;
+use image::DynamicImage;
 use std::io::Cursor;
 use tauri::WebviewWindow;
+use xcap::Monitor;
+
+#[derive(serde::Serialize)]
+pub struct MonitorInfo {
+    pub index: usize,
+    pub name: String,
+    pub width: u32,
+    pub height: u32,
+    pub is_primary: bool,
+}
+
+#[tauri::command]
+pub fn list_monitors() -> Result<Vec<MonitorInfo>, String> {
+    let monitors = Monitor::all().map_err(|e| format!("Failed to list monitors: {}", e))?;
+    let infos = monitors
+        .iter()
+        .enumerate()
+        .map(|(i, m)| MonitorInfo {
+            index: i,
+            name: m.name().unwrap_or_else(|_| format!("Monitor {}", i + 1)),
+            width: m.width().unwrap_or(0),
+            height: m.height().unwrap_or(0),
+            is_primary: m.is_primary().unwrap_or(false),
+        })
+        .collect();
+    Ok(infos)
+}
 
 #[tauri::command]
 pub fn capture_screen(
     window: WebviewWindow,
     quality: Option<u8>,
     max_width: Option<u32>,
+    monitor_index: Option<usize>,
 ) -> Result<String, String> {
     if window.label() != "overlay" {
         return Err("Screen capture is only available from the overlay window".into());
@@ -17,21 +45,30 @@ pub fn capture_screen(
     let quality = quality.unwrap_or(70);
     let max_width = max_width.unwrap_or(1920);
 
-    let screens = Screenshots::all();
-    let screen = screens
-        .into_iter()
-        .next()
-        .ok_or_else(|| "No screens found".to_string())?;
+    let monitors = Monitor::all().map_err(|e| format!("Failed to list monitors: {}", e))?;
 
-    let capture = screen
-        .capture()
-        .ok_or_else(|| "Failed to capture screen".to_string())?;
+    let monitor = match monitor_index {
+        Some(idx) => monitors
+            .into_iter()
+            .nth(idx)
+            .ok_or_else(|| format!("Monitor index {} not found", idx))?,
+        None => monitors
+            .into_iter()
+            .find(|m| m.is_primary().unwrap_or(false))
+            .or_else(|| {
+                Monitor::all()
+                    .ok()
+                    .and_then(|m| m.into_iter().next())
+            })
+            .ok_or_else(|| "No monitors found".to_string())?,
+    };
 
-    // The screenshots crate returns a PNG-encoded buffer
-    let png_bytes = capture.buffer();
+    // xcap returns RgbaImage directly — no intermediate PNG decode needed
+    let rgba = monitor
+        .capture_image()
+        .map_err(|e| format!("Failed to capture screen: {}", e))?;
 
-    let mut img = image::load_from_memory_with_format(&png_bytes, image::ImageFormat::Png)
-        .map_err(|e| format!("Failed to decode PNG: {}", e))?;
+    let mut img = DynamicImage::from(rgba);
 
     // Resize if wider than max_width
     if img.width() > max_width {

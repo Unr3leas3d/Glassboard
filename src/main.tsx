@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { initPlatform } from "@/utils/platform";
 import "./App.css";
 
 const params = new URLSearchParams(window.location.search);
@@ -37,6 +38,8 @@ declare global {
 }
 
 async function renderApp() {
+  await initPlatform();
+
   let AppComponent: React.ComponentType;
 
   // Detect if we are running inside the Tauri Desktop App.

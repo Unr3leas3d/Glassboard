@@ -23,6 +23,7 @@ import type { OverlayPayload } from "../../types/events";
 import { EVENTS } from "../../types/events";
 import type { Session } from "../../hooks/useSessions";
 import { getDisplayName, getAvatarUrl } from "../../utils/displayName";
+import { isWindows } from "@/utils/platform";
 
 export function ManagementApp() {
   const { user, loading: authLoading, signIn, signUp, signInWithGoogle, signOut } = useAuth();
@@ -64,6 +65,13 @@ export function ManagementApp() {
   }, []);
 
   useGlobalHotkey(getBinding("show-management"), showManagement);
+
+  // On Windows, remove native decorations so custom WindowTitleBar takes over
+  useEffect(() => {
+    if (isWindows) {
+      getCurrentWindow().setDecorations(false).catch(console.error);
+    }
+  }, []);
 
   // Auto-create org on first login
   const autoCreatedRef = useRef(false);
@@ -147,7 +155,7 @@ export function ManagementApp() {
       };
 
       const baseUrl = import.meta.env.DEV
-        ? "http://localhost:1420"
+        ? "http://localhost:1421"
         : "index.html";
 
       const encodedPayload = encodeURIComponent(btoa(JSON.stringify(payload)));

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { modifierLabel } from "@/utils/platform";
 import type { Session } from "../hooks/useSessions";
 import type { PresenceUser } from "../hooks/usePresence";
 
@@ -125,7 +126,7 @@ export function BottomBar({
           <button
             className="glasboard-bottom-bar glasboard-bottom-bar--idle"
             onClick={onShowManagement}
-            title="Open dashboard (Cmd+Shift+D)"
+            title={`Open dashboard (${modifierLabel}+Shift+D)`}
             aria-label="Open dashboard"
           >
             <svg
@@ -150,7 +151,7 @@ export function BottomBar({
         <button
           className={`glasboard-bottom-bar ${isActive ? "glasboard-bottom-bar--active" : "glasboard-bottom-bar--idle"}`}
           onClick={onToggleLaser}
-          title={isActive ? "Laser on — click or Cmd+Shift+G to deactivate" : "Click or Cmd+Shift+G to activate laser"}
+          title={isActive ? `Laser on — click or ${modifierLabel}+Shift+G to deactivate` : `Click or ${modifierLabel}+Shift+G to activate laser`}
           aria-label={isActive ? "Deactivate laser pointer" : "Activate laser pointer"}
           aria-pressed={isActive}
         >

@@ -1,11 +1,4 @@
-const MODIFIER_SYMBOLS: Record<string, string> = {
-  CommandOrControl: "⌘",
-  Command: "⌘",
-  Control: "⌃",
-  Shift: "⇧",
-  Alt: "⌥",
-  Option: "⌥",
-};
+import { modifierSymbols } from "@/utils/platform";
 
 /**
  * Convert a Tauri accelerator string to a human-readable format.
@@ -14,7 +7,7 @@ const MODIFIER_SYMBOLS: Record<string, string> = {
 export function formatAccelerator(accelerator: string): string {
   return accelerator
     .split("+")
-    .map((part) => MODIFIER_SYMBOLS[part] ?? part.toUpperCase())
+    .map((part) => modifierSymbols[part] ?? part.toUpperCase())
     .join(" ");
 }
 
