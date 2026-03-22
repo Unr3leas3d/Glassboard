@@ -11,7 +11,7 @@ export function useScreenMirror(
   const [remoteFrame, setRemoteFrame] = useState<string | null>(null);
 
   // Presenter: capture and broadcast screenshot
-  const shareScreen = useCallback(async () => {
+  const shareScreen = useCallback(async (monitorIndex?: number) => {
     const channel = channelRef.current;
     if (!channel || !isConnected) return;
 
@@ -19,6 +19,7 @@ export function useScreenMirror(
       const dataUrl = await invoke<string>("capture_screen", {
         quality: 70,
         maxWidth: 1920,
+        monitorIndex,
       });
 
       channel.send({

@@ -15,6 +15,7 @@ import { useScreenMirror } from "../../hooks/useScreenMirror";
 import { ExcalidrawCanvas } from "../../components/ExcalidrawCanvas";
 import { RemoteCursorsOverlay } from "../../components/RemoteCursorsOverlay";
 import { ScreenMirrorView } from "../../components/ScreenMirrorView";
+import { MonitorPicker } from "../../components/MonitorPicker";
 import { supabase } from "../../supabase";
 import { EVENTS } from "../../types/events";
 import type {
@@ -32,7 +33,7 @@ function readPayload(): OverlayPayload {
 }
 
 function buildWindowUrl(windowType: string, payload: unknown): string {
-  const baseUrl = import.meta.env.DEV ? "http://localhost:1420" : "index.html";
+  const baseUrl = import.meta.env.DEV ? "http://localhost:1421" : "index.html";
   const encoded = encodeURIComponent(btoa(JSON.stringify(payload)));
   return `${baseUrl}?window=${windowType}&payload=${encoded}`;
 }
@@ -83,6 +84,10 @@ export function OverlayApp() {
   // Laser / draw mode
   const { isLaserActive, toggleLaser } = useLaserMode(apiRef);
   const [screenshotsEnabled, setScreenshotsEnabled] = useState(false);
+
+  // Monitor selection for screen sharing
+  const [showMonitorPicker, setShowMonitorPicker] = useState(false);
+  const selectedMonitorRef = useRef<number | undefined>(undefined);
 
   const toggleScreenshots = useCallback(async () => {
     const next = !screenshotsEnabled;
@@ -163,7 +168,13 @@ export function OverlayApp() {
       listen(EVENTS.UI_TOGGLE_SCREENSHOTS, () => toggleScreenshots()),
       listen(EVENTS.UI_SHOW_MANAGEMENT, () => handleShowManagement()),
       listen(EVENTS.UI_SIGN_OUT, () => handleSignOut()),
-      listen(EVENTS.UI_SHARE_SCREEN, () => shareScreen()),
+      listen(EVENTS.UI_SHARE_SCREEN, () => {
+        if (selectedMonitorRef.current !== undefined) {
+          shareScreen(selectedMonitorRef.current);
+        } else {
+          setShowMonitorPicker(true);
+        }
+      }),
       listen(EVENTS.UI_STOP_SHARING, () => stopSharing()),
       listen<{ sessionId: string }>(EVENTS.UI_END_SESSION, (e) =>
         handleEndSession(e.payload.sessionId),
@@ -263,6 +274,12 @@ export function OverlayApp() {
     return () => subscription.unsubscribe();
   }, [destroyUIWindows]);
 
+  const handleMonitorSelect = useCallback((monitorIndex: number) => {
+    selectedMonitorRef.current = monitorIndex;
+    setShowMonitorPicker(false);
+    shareScreen(monitorIndex);
+  }, [shareScreen]);
+
   if (!verified) return null;
 
   return (
@@ -274,6 +291,14 @@ export function OverlayApp() {
         onSceneChange={handleSceneChange}
       />
       <RemoteCursorsOverlay cursors={cursors} />
+      {showMonitorPicker && (
+        <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-[9999]">
+          <MonitorPicker
+            onSelect={handleMonitorSelect}
+            onCancel={() => setShowMonitorPicker(false)}
+          />
+        </div>
+      )}
     </>
   );
 }
