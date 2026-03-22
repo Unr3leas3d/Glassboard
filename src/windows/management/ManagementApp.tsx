@@ -69,7 +69,7 @@ export function ManagementApp() {
   // On Windows, remove native decorations so custom WindowTitleBar takes over
   useEffect(() => {
     if (isWindows) {
-      getCurrentWindow().setDecorations(false);
+      getCurrentWindow().setDecorations(false).catch(console.error);
     }
   }, []);
 

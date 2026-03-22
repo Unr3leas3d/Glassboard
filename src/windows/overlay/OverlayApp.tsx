@@ -89,6 +89,16 @@ export function OverlayApp() {
   const [showMonitorPicker, setShowMonitorPicker] = useState(false);
   const selectedMonitorRef = useRef<number | undefined>(undefined);
 
+  // Temporarily disable click-through when MonitorPicker is visible
+  useEffect(() => {
+    if (showMonitorPicker) {
+      getCurrentWindow().setIgnoreCursorEvents(false).catch(console.error);
+    } else if (!isLaserActive) {
+      // Restore click-through only if laser is off (laser already disables it)
+      getCurrentWindow().setIgnoreCursorEvents(true).catch(console.error);
+    }
+  }, [showMonitorPicker, isLaserActive]);
+
   const toggleScreenshots = useCallback(async () => {
     const next = !screenshotsEnabled;
     await getCurrentWindow().setContentProtected(!next);
