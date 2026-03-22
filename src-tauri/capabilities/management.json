@@ -1,24 +1,22 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "Capability for management and overlay windows",
-  "windows": ["management", "overlay"],
+  "identifier": "management",
+  "description": "Capabilities for the management window: auth, org management, session controls",
+  "windows": ["management"],
   "permissions": [
     "core:default",
-    "opener:default",
-    "core:window:allow-set-content-protected",
     "core:window:allow-set-focus",
-    "core:window:allow-set-ignore-cursor-events",
     "core:window:allow-create",
+    "core:webview:allow-create-webview-window",
     "core:window:allow-hide",
     "core:window:allow-show",
     "core:window:allow-destroy",
     "core:window:allow-close",
-    "core:window:allow-set-always-on-top",
+    "core:window:allow-minimize",
+    "core:window:allow-start-dragging",
     "core:event:default",
     "global-shortcut:default",
     "global-shortcut:allow-register",
-    "global-shortcut:allow-unregister",
-    "deep-link:default"
+    "global-shortcut:allow-unregister"
   ]
 }

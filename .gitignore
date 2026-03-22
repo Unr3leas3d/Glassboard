@@ -7,10 +7,21 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies / build outputs
 node_modules
 dist
 dist-ssr
+coverage
+*.tsbuildinfo
+
+# Environment / secrets
 *.local
+.env
+.env.*
+
+# Rust / Tauri build outputs
+src-tauri/target
+target
 
 # Editor directories and files
 .vscode/*
@@ -22,3 +33,20 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local tooling / agent state
+.claude/
+.playwright-mcp/
+.superpowers/
+
+# Agent-generated plans
+docs/superpowers/plans/
+
+# Debug utilities
+dump_server.py
+
+# Icon source / design files (built icons in src-tauri/icons are kept)
+app-icon-source.png
+app-icon-source.svg
+app-icon-transparent.png
+app-icon.png

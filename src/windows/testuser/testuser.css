@@ -1,0 +1,26 @@
+/* Skeleton pulse animation for inline-styled loading states */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Override global Excalidraw UI hiding rules for the test user canvas */
+.testuser-canvas .excalidraw .App-toolbar-container {
+  display: flex !important;
+}
+
+.testuser-canvas .excalidraw .layer-ui__wrapper__footer {
+  display: flex !important;
+}
+
+.testuser-canvas .excalidraw .App-toolbar__extra-tools-trigger {
+  display: flex !important;
+}
+
+.testuser-canvas .excalidraw .main-menu-trigger {
+  display: flex !important;
+}
+
+.testuser-canvas .excalidraw .locked-icon {
+  display: flex !important;
+}

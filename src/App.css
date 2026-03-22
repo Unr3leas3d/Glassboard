@@ -18,32 +18,41 @@
   line-height: 24px;
   font-weight: 400;
 
-  color: #0f0f0f;
-  background-color: #ffffff;
+  color: var(--foreground);
+  background-color: var(--background);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
-  --background: oklch(1 0 0);
+
+  /* ─── Brand gold palette ─── */
+  --gold: #C1B97E;
+  --gold-warm: #D4C97A;
+  --gold-dim: #9E9764;
+  --gold-glow: rgba(193, 185, 126, 0.12);
+  --gold-glow-strong: rgba(193, 185, 126, 0.25);
+
+  /* ─── Light theme warm values ─── */
+  --background: #F6F4EF;
   --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
+  --card: #FFFFFF;
   --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
+  --popover: #FFFFFF;
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
+  --secondary: #EFECE5;
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
+  --muted: #F0EDE6;
   --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
+  --accent: #F0EDE6;
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: rgba(0, 0, 0, 0.08);
+  --input: #F0EDE6;
+  --ring: rgba(193, 185, 126, 0.40);
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
@@ -99,80 +108,31 @@ h1 {
   text-align: center;
 }
 
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
-}
+/* Remove global input/button border overrides so Tailwind works correctly */
 
 #greet-input {
   margin-right: 5px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #0f0f0f;
-  }
-
-  a:hover {
-    color: #24c8db;
-  }
-
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
-  }
-}
-
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
+  --background: #0C0C0E;
+  --foreground: #F0EDE6;
+  --card: #1A1A1E;
+  --card-foreground: #F0EDE6;
+  --popover: #1A1A1E;
+  --popover-foreground: #F0EDE6;
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --secondary: #222226;
+  --secondary-foreground: #F0EDE6;
+  --muted: #222226;
+  --muted-foreground: rgba(240, 237, 230, 0.50);
+  --accent: #222226;
+  --accent-foreground: #F0EDE6;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --border: rgba(255, 255, 255, 0.07);
+  --input: rgba(255, 255, 255, 0.10);
+  --ring: rgba(193, 185, 126, 0.30);
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
@@ -240,6 +200,14 @@ button {
   html {
     @apply font-sans;
   }
+  :root:not(.dark) .bg-card {
+    box-shadow: 0 1px 3px 0 oklch(0.4 0.01 260 / 8%), 0 4px 12px 0 oklch(0.4 0.01 260 / 5%);
+  }
+}
+
+/* Enable native drag on titlebar region */
+*[data-tauri-drag-region] {
+  app-region: drag;
 }
 
 /* Base styles for all windows */
@@ -252,9 +220,11 @@ html, body, #root {
 }
 
 /* Transparent background only for overlay window */
-body.overlay-window,
-body.overlay-window #root {
+html.overlay-window,
+html.overlay-window body,
+html.overlay-window #root {
   background: transparent !important;
+  background-color: transparent !important;
 }
 /* Excalidraw wrapper must have explicit dimensions */
 .excalidraw-wrapper {
@@ -313,16 +283,23 @@ body.overlay-window #root {
   display: none !important;
 }
 
-/* ---- WhisperFlow-style bottom bar ---- */
-.glasboard-bottom-bar-wrapper {
+/* ---- Bottom bar container (anchored to bottom of window) ---- */
+.glasboard-bottom-bar-container {
   position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
   z-index: 9999;
+  pointer-events: none;
+}
+
+.glasboard-bottom-bar-wrapper {
   pointer-events: auto;
   display: flex;
   gap: 8px;
+  padding-bottom: 6px;
 }
 
 .glasboard-bottom-bar {
@@ -338,7 +315,7 @@ body.overlay-window #root {
   padding: 0 !important;
 }
 
-/* Active state: laser is on — red indicator */
+/* Active state: red indicator */
 .glasboard-bottom-bar--active {
   border: 1px solid rgba(255, 60, 60, 0.40);
   color: #ff4444;
@@ -349,7 +326,7 @@ body.overlay-window #root {
   color: #ff6666;
 }
 
-/* Idle state: laser is off — subtle white indicator */
+/* Idle state: subtle white indicator */
 .glasboard-bottom-bar--idle {
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: rgba(255, 255, 255, 0.45);
@@ -373,21 +350,47 @@ body.overlay-window #root {
   color: #fcd34d;
 }
 
-/* ---- Session bar (top of screen during active session) ---- */
-.glasboard-session-bar {
-  position: fixed;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 9999;
+/* ---- Session info panel (expands above bottom bar) ---- */
+.glasboard-session-panel {
   pointer-events: auto;
-  display: flex;
-  align-items: center;
-  gap: 12px;
   background: #1a1a1a;
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: 12px;
-  padding: 6px 12px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 240px;
+  margin-bottom: 8px;
+}
+
+.glasboard-session-panel-btn {
+  padding: 5px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+  background: transparent !important;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  align-self: flex-start;
+  box-shadow: none;
+}
+
+.glasboard-session-panel-btn:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.glasboard-session-panel-btn--danger {
+  border-color: rgba(255, 60, 60, 0.40);
+  color: #ff4444;
+}
+
+.glasboard-session-panel-btn--danger:hover {
+  background: rgba(255, 40, 40, 0.10) !important;
+  color: #ff6666;
 }
 
 /* ---- Remote cursor overlay ---- */
@@ -408,23 +411,49 @@ body.overlay-window #root {
   transition: transform 0.05s linear;
 }
 
-.glasboard-remote-cursor__dot {
-  width: 12px;
-  height: 12px;
+.glasboard-remote-cursor__arrow {
+  display: block;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.glasboard-remote-cursor__avatar {
+  position: absolute;
+  top: 12px;
+  left: 10px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  border: 2px solid white;
+  border: 2px solid;
+  background: #1a1a1a;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.glasboard-remote-cursor__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.glasboard-remote-cursor__avatar-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .glasboard-remote-cursor__label {
   position: absolute;
-  top: 16px;
-  left: 4px;
+  top: 38px;
+  left: 10px;
   font-size: 11px;
   font-weight: 500;
   color: white;
-  background: inherit;
   padding: 1px 6px;
   border-radius: 4px;
   white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
