@@ -17,10 +17,11 @@ const themeOptions: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
 
 export function AppTab({ theme, setTheme }: AppTabProps) {
   const { bindings, updateBinding, resetBinding, resetToDefaults } = useHotkeySettings();
-
-  const hasModified = bindings.some(
-    (b) => b.accelerator !== DEFAULT_HOTKEY_BINDINGS.find((d) => d.id === b.id)?.accelerator,
+  const defaultAcceleratorsById = new Map(
+    DEFAULT_HOTKEY_BINDINGS.map((binding) => [binding.id, binding.accelerator]),
   );
+
+  const hasModified = bindings.some((binding) => binding.accelerator !== defaultAcceleratorsById.get(binding.id));
 
   return (
     <div className="space-y-4">
@@ -55,12 +56,11 @@ export function AppTab({ theme, setTheme }: AppTabProps) {
 
         <div className="divide-y divide-border">
           {bindings.map((binding) => {
-            const def = DEFAULT_HOTKEY_BINDINGS.find((d) => d.id === binding.id)!;
             return (
               <HotkeyRow
                 key={binding.id}
                 binding={binding}
-                defaultAccelerator={def.accelerator}
+                defaultAccelerator={defaultAcceleratorsById.get(binding.id)!}
                 allBindings={bindings}
                 onUpdate={updateBinding}
                 onReset={resetBinding}
