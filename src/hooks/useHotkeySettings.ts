@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 export interface HotkeyBinding {
   id: string;
@@ -13,6 +13,13 @@ export const DEFAULT_HOTKEY_BINDINGS: HotkeyBinding[] = [
     label: "Toggle Laser",
     description: "Activate/deactivate the laser drawing mode",
     accelerator: "CommandOrControl+Shift+G",
+  },
+  {
+    id: "end-or-leave-session",
+    label: "End or Leave Session",
+    description:
+      "Prompt to end the current session if you're the host, or leave it if you're a participant.",
+    accelerator: "CommandOrControl+Shift+E",
   },
   {
     id: "show-management",
@@ -53,6 +60,17 @@ function saveBindings(bindings: HotkeyBinding[]) {
 export function useHotkeySettings() {
   const [bindings, setBindings] = useState<HotkeyBinding[]>(loadBindings);
 
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY) {
+        setBindings(loadBindings());
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
   const getBinding = useCallback(
     (id: string): string => {
       const binding = bindings.find((b) => b.id === id);
@@ -63,13 +81,15 @@ export function useHotkeySettings() {
 
   const updateBinding = useCallback(
     (id: string, accelerator: string) => {
-      const next = bindings.map((b) =>
-        b.id === id ? { ...b, accelerator } : b,
-      );
-      setBindings(next);
-      saveBindings(next);
+      setBindings((current) => {
+        const next = current.map((binding) =>
+          binding.id === id ? { ...binding, accelerator } : binding,
+        );
+        saveBindings(next);
+        return next;
+      });
     },
-    [bindings],
+    [],
   );
 
   const resetBinding = useCallback(

@@ -2,6 +2,7 @@
 import type { Session } from "../hooks/useSessions";
 import type { Organization } from "../hooks/useOrganizations";
 import type { PresenceUser } from "../hooks/usePresence";
+import type { SessionWindowId } from "../services/sessionWindows/definitions";
 
 /** Payload passed from management window to overlay via URL query param */
 export interface OverlayPayload {
@@ -35,6 +36,49 @@ export interface OverlayStatePayload {
   screenshotsEnabled: boolean;
   isSharing: boolean;
   participants: PresenceUser[];
+  uiState: SessionUiState;
+}
+
+/** Next-generation overlay-owned session UI state for companion windows */
+export interface SessionUiState {
+  laserActive: boolean;
+  screenshotsAllowed: boolean;
+  participants: PresenceUser[];
+  session?: Session;
+  chatUnreadCount: number;
+  shareStatus: "idle" | "selecting-source" | "sharing" | "error";
+  shareSource?: number;
+  widgetsHidden: boolean;
+}
+
+export interface OpenSessionWindowPayload {
+  id: SessionWindowId;
+}
+
+export interface ShareScreenCommandPayload {
+  monitorIndex?: number;
+}
+
+export interface WidgetStateChangePayload {
+  widgetId: SessionWindowId;
+  unreadCount?: number;
+}
+
+export interface OverlayValidationRequestPayload {
+  requestId: string;
+  expectedUserId: string;
+  sessionId: string;
+}
+
+export interface OverlayValidationResultPayload {
+  requestId: string;
+  valid: boolean;
+  reason:
+    | "verified"
+    | "auth-mismatch"
+    | "auth-missing"
+    | "session-ended"
+    | "session-lookup-error";
 }
 
 /** Tauri event names for cross-window communication */
@@ -44,6 +88,8 @@ export const EVENTS = {
   REQUEST_SHOW_MANAGEMENT: "request-show-management",
   REQUEST_SIGN_OUT: "request-sign-out",
   DEACTIVATE_LASER: "deactivate-laser",
+  REQUEST_OVERLAY_VALIDATION: "request-overlay-validation",
+  OVERLAY_VALIDATION_RESULT: "overlay-validation-result",
 
   // Overlay → UI windows (state broadcasts)
   OVERLAY_STATE: "overlay:state",
@@ -57,4 +103,14 @@ export const EVENTS = {
   UI_TOGGLE_SCREENSHOTS: "ui:toggle-screenshots",
   UI_SHARE_SCREEN: "ui:share-screen",
   UI_STOP_SHARING: "ui:stop-sharing",
+  UI_OPEN_CHAT: "ui:open-chat",
+  UI_OPEN_WINDOW: "ui:open-window",
+  UI_CLOSE_WINDOW: "ui:close-window",
+
+  // Widget lifecycle
+  WIDGET_OPENED: "widget:opened",
+  WIDGET_CLOSED: "widget:closed",
+  WIDGET_COLLAPSED: "widget:collapsed",
+  WIDGET_EXPANDED: "widget:expanded",
+  WIDGET_STATE_CHANGE: "widget:state-change",
 } as const;

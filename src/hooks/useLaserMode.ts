@@ -1,52 +1,47 @@
-import { useState, useCallback, useEffect } from "react";
-import type { RefObject } from "react";
-import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 /**
  * Manages laser pointer on/off state.
  *
- * UI controls (BottomBar, SessionBar) live in separate always-interactive
- * Tauri windows, so the overlay can safely be fully click-through.
+ * UI controls (Dock) live in separate always-interactive Tauri windows,
+ * so the overlay can safely be fully click-through.
  *
  * When laser is inactive: overlay ignores cursor events (click-through).
- * When laser is active:   overlay captures events, Excalidraw laser tool is set.
+ * When laser is active:   overlay captures events for the annotation canvas.
  */
-export function useLaserMode(
-  apiRef: RefObject<ExcalidrawImperativeAPI | null>,
-) {
+export function useLaserMode(interactiveOverride = false) {
   const [isLaserActive, setIsLaserActive] = useState(false);
+  const previousInteractiveOverrideRef = useRef(interactiveOverride);
 
-  // Start click-through on mount
   useEffect(() => {
-    getCurrentWindow().setIgnoreCursorEvents(true).catch(console.error);
-  }, []);
+    const shouldIgnoreCursorEvents = !(isLaserActive || interactiveOverride);
+    getCurrentWindow().setIgnoreCursorEvents(shouldIgnoreCursorEvents).catch(console.error);
+
+    if (isLaserActive || interactiveOverride) {
+      getCurrentWindow().setFocus().catch(console.error);
+    }
+  }, [isLaserActive, interactiveOverride]);
+
+  useEffect(() => {
+    if (!isLaserActive) {
+      (document.activeElement as HTMLElement | null)?.blur();
+    }
+  }, [isLaserActive]);
+
+  useEffect(() => {
+    const wasInteractiveOverrideActive = previousInteractiveOverrideRef.current;
+    previousInteractiveOverrideRef.current = interactiveOverride;
+
+    if (wasInteractiveOverrideActive && !interactiveOverride && !isLaserActive) {
+      (document.activeElement as HTMLElement | null)?.blur();
+      window.blur();
+    }
+  }, [interactiveOverride, isLaserActive]);
 
   const toggleLaser = useCallback(() => {
-    const api = apiRef.current;
-    setIsLaserActive((prev) => {
-      const next = !prev;
-      if (next) {
-        if (api) {
-          api.setActiveTool({ type: "laser" });
-        }
-        (async () => {
-          try {
-            await getCurrentWindow().setIgnoreCursorEvents(false);
-            await getCurrentWindow().setFocus();
-            await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-            document.querySelector<HTMLElement>(".excalidraw")?.focus({ preventScroll: true });
-          } catch (err) {
-            console.error("[Glassboard] Failed to acquire focus:", err);
-          }
-        })();
-      } else {
-        (document.activeElement as HTMLElement)?.blur();
-        getCurrentWindow().setIgnoreCursorEvents(true).catch(console.error);
-      }
-      return next;
-    });
-  }, [apiRef]);
+    setIsLaserActive((prev) => !prev);
+  }, []);
 
   return { isLaserActive, toggleLaser };
 }

@@ -2,7 +2,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { listen, emit } from "@tauri-apps/api/event";
+import { listen, emit, emitTo } from "@tauri-apps/api/event";
 import { useAuth } from "../../hooks/useAuth";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus";
 import { useOrganizations } from "../../hooks/useOrganizations";
@@ -19,7 +19,14 @@ import { WindowTitleBar } from "../../components/WindowTitleBar";
 import { Skeleton } from "../../components/ui/skeleton";
 import { CreateSessionButton } from "../../components/session/CreateSessionButton";
 import { supabase } from "../../supabase";
-import type { OverlayPayload } from "../../types/events";
+import { sessionWindowCoordinator } from "../../services/sessionWindows/coordinator";
+import { recordSessionWindowDebug } from "../../services/sessionWindows/debug";
+import { buildWindowUrl } from "../../services/sessionWindows/payload";
+import type {
+  OverlayPayload,
+  OverlayValidationRequestPayload,
+  OverlayValidationResultPayload,
+} from "../../types/events";
 import { EVENTS } from "../../types/events";
 import type { Session } from "../../hooks/useSessions";
 import { getDisplayName, getAvatarUrl } from "../../utils/displayName";
@@ -84,13 +91,7 @@ export function ManagementApp() {
 
   // Destroy overlay and its child UI windows
   const destroyOverlay = useCallback(async () => {
-    // Destroy UI windows that the overlay may have spawned
-    for (const label of ["bottombar", "sessionbar"]) {
-      try {
-        const win = await WebviewWindow.getByLabel(label);
-        await win?.destroy();
-      } catch { /* already destroyed */ }
-    }
+    await sessionWindowCoordinator.destroyAll();
     try {
       if (overlayRef.current) {
         await overlayRef.current.destroy();
@@ -118,12 +119,65 @@ export function ManagementApp() {
       signOut();
     });
 
+    const p4 = listen<OverlayValidationRequestPayload>(
+      EVENTS.REQUEST_OVERLAY_VALIDATION,
+      async (event) => {
+        const request = event.payload;
+        let result: OverlayValidationResultPayload;
+
+        if (!user) {
+          result = {
+            requestId: request.requestId,
+            valid: false,
+            reason: "auth-missing",
+          };
+        } else if (user.id !== request.expectedUserId) {
+          result = {
+            requestId: request.requestId,
+            valid: false,
+            reason: "auth-mismatch",
+          };
+        } else {
+          const { data: sessionData, error: sessionError } = await supabase
+            .from("sessions")
+            .select("id")
+            .eq("id", request.sessionId)
+            .eq("status", "active")
+            .maybeSingle();
+
+          if (sessionError) {
+            recordSessionWindowDebug("management:overlay-session-lookup-error", sessionError);
+            result = {
+              requestId: request.requestId,
+              valid: true,
+              reason: "session-lookup-error",
+            };
+          } else if (!sessionData) {
+            result = {
+              requestId: request.requestId,
+              valid: false,
+              reason: "session-ended",
+            };
+          } else {
+            result = {
+              requestId: request.requestId,
+              valid: true,
+              reason: "verified",
+            };
+          }
+        }
+
+        emitTo("overlay", EVENTS.OVERLAY_VALIDATION_RESULT, result).catch(console.error);
+      },
+    );
+
     return () => {
       p1.then((fn) => fn());
       p2.then((fn) => fn());
       p3.then((fn) => fn());
+      p4.then((fn) => fn());
     };
-  }, [leaveSession, showManagement, signOut, destroyOverlay]);
+  }, [destroyOverlay, leaveSession, showManagement, signOut, user]);
 
   // Handle app quit: destroy overlay before management window closes
   useEffect(() => {
@@ -154,14 +208,14 @@ export function ManagementApp() {
         currentOrg: currentOrg!,
       };
 
-      const baseUrl = import.meta.env.DEV
-        ? "http://localhost:1421"
-        : "index.html";
-
-      const encodedPayload = encodeURIComponent(btoa(JSON.stringify(payload)));
-      const url = `${baseUrl}?window=overlay&payload=${encodedPayload}`;
+      const url = buildWindowUrl("overlay", payload);
 
       try {
+        recordSessionWindowDebug("management:spawn-overlay", {
+          sessionId: session.id,
+          userId: user.id,
+        });
+
         const overlay = new WebviewWindow("overlay", {
           url,
           transparent: true,
@@ -174,11 +228,13 @@ export function ManagementApp() {
 
         overlay.once("tauri://error", (e) => {
           console.error("[Glassboard] Overlay window error:", e);
+          recordSessionWindowDebug("management:overlay-error", e);
           setOverlayError("Failed to open overlay window. Please try again.");
           overlayRef.current = null;
         });
 
         overlay.once("tauri://destroyed", () => {
+          recordSessionWindowDebug("management:overlay-destroyed");
           // Only run crash recovery if session-ended hasn't already handled cleanup
           if (overlayRef.current) {
             overlayRef.current = null;
@@ -191,10 +247,12 @@ export function ManagementApp() {
 
         // Wait for overlay to be created before hiding management
         overlay.once("tauri://created", async () => {
+          recordSessionWindowDebug("management:overlay-created");
           await getCurrentWindow().hide();
         });
       } catch (err) {
         console.error("[Glassboard] Failed to create overlay:", err);
+        recordSessionWindowDebug("management:overlay-create-threw", err);
         setOverlayError("Failed to open overlay window. Please try again.");
       }
     },

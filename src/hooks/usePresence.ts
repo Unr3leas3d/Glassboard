@@ -1,21 +1,13 @@
 import { useEffect, useState } from "react";
 import type { RefObject } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { userColor } from "../utils/userColor";
 
 export interface PresenceUser {
   userId: string;
   name: string;
   color: string;
   isHost: boolean;
-}
-
-function userColor(userId: string): string {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    hash = (hash * 31 + userId.charCodeAt(i)) | 0;
-  }
-  const hue = ((hash % 360) + 360) % 360;
-  return `hsl(${hue}, 70%, 60%)`;
 }
 
 export function usePresence(

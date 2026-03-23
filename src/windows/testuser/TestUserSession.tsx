@@ -1,7 +1,6 @@
 import { useRef, useCallback, useEffect, useState } from "react";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { useSessionChannel } from "../../hooks/useSessionChannel";
-import { useRealtimeAnnotations } from "../../hooks/useRealtimeAnnotations";
 import { useRealtimeCursors } from "../../hooks/useRealtimeCursors";
 import { usePresence } from "../../hooks/usePresence";
 import { RemoteCursorsOverlay } from "../../components/RemoteCursorsOverlay";
@@ -22,7 +21,6 @@ export function TestUserSession({ session, userId, userName, userAvatarUrl, onLe
   const isHost = session.host_id === userId;
 
   const { channel, isConnected } = useSessionChannel(session.id);
-  const { broadcastChanges } = useRealtimeAnnotations(channel, apiRef, isConnected);
   const { cursors } = useRealtimeCursors(channel, isConnected, userId, userName, userAvatarUrl);
   const { participants } = usePresence(channel, isConnected, userId, userName, isHost);
 
@@ -37,13 +35,13 @@ export function TestUserSession({ session, userId, userName, userAvatarUrl, onLe
     });
   }, [channel, isConnected]);
 
+  // Test user canvas scene change — no-op since annotation protocol changed
   const handleSceneChange = useCallback(
-    (elements: readonly unknown[]) => {
-      if (isConnected) {
-        broadcastChanges(elements as readonly { id: string; version: number }[]);
-      }
+    (_elements: readonly unknown[]) => {
+      // The test user Excalidraw canvas doesn't broadcast via the new laser_stroke protocol.
+      // Remote laser strokes from the desktop app are rendered separately.
     },
-    [isConnected, broadcastChanges],
+    [],
   );
 
   return (
