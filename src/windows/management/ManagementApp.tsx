@@ -17,7 +17,9 @@ import type { SettingsTab } from "../../components/settings/SettingsPage";
 import { OfflineBanner } from "../../components/OfflineBanner";
 import { WindowTitleBar } from "../../components/WindowTitleBar";
 import { Skeleton } from "../../components/ui/skeleton";
-import { CreateSessionButton } from "../../components/session/CreateSessionButton";
+import { SessionList } from "../../components/session/SessionList";
+import { NewSessionForm } from "../../components/session/NewSessionForm";
+import { useActiveSessions } from "../../hooks/useActiveSessions";
 import { supabase } from "../../supabase";
 import { sessionWindowCoordinator } from "../../services/sessionWindows/coordinator";
 import { recordSessionWindowDebug } from "../../services/sessionWindows/debug";
@@ -50,11 +52,11 @@ export function ManagementApp() {
     updateMemberRole,
   } = useOrganizations(user?.id);
   const {
-    error: sessionError,
     createSession,
     joinSession,
     leaveSession,
-  } = useSessions(user?.id, currentOrg?.id);
+  } = useSessions(user?.id);
+  const { groups: activeSessionGroups, loading: sessionsLoading } = useActiveSessions(user?.id, orgs);
 
   const [overlayError, setOverlayError] = useState<string | null>(null);
   const overlayRef = useRef<WebviewWindow | null>(null);
@@ -261,8 +263,8 @@ export function ManagementApp() {
 
   // Wrap createSession to spawn overlay on success
   const handleCreateSession = useCallback(
-    async (title?: string) => {
-      const session = await createSession(title);
+    async (orgId: string, title?: string) => {
+      const session = await createSession(orgId, title);
       if (session) {
         await spawnOverlay(session);
       }
@@ -273,8 +275,8 @@ export function ManagementApp() {
 
   // Wrap joinSession to spawn overlay on success
   const handleJoinSession = useCallback(
-    async (code: string) => {
-      const session = await joinSession(code);
+    async (sessionId: string) => {
+      const session = await joinSession(sessionId);
       if (session) {
         await spawnOverlay(session);
       }
@@ -392,53 +394,17 @@ export function ManagementApp() {
       {overlayError && (
         <p className="text-sm text-red-400 text-center">{overlayError}</p>
       )}
-      <CreateSessionButton onCreate={handleCreateSession} disabled={!currentOrg} />
-      {/* "or join" divider */}
-      <div className="flex items-center gap-3">
-        <div className="flex-1 h-px bg-border" />
-        <span className="text-[11px] font-medium uppercase tracking-[0.04em] text-muted-foreground">or join</span>
-        <div className="flex-1 h-px bg-border" />
-      </div>
-      {/* Inline join row */}
-      <InlineJoinRow onJoin={handleJoinSession} error={sessionError} />
-    </ManagementPanel>
-  );
-}
-
-function InlineJoinRow({ onJoin, error }: { onJoin: (code: string) => Promise<unknown>; error?: string | null }) {
-  const [code, setCode] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const normalized = code.trim().toUpperCase();
-  const valid = /^[A-Z0-9]{6}$/.test(normalized);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!valid) return;
-    setLoading(true);
-    await onJoin(normalized);
-    setLoading(false);
-    setCode("");
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="flex gap-2.5">
-      <input
-        type="text"
-        value={code}
-        onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 6))}
-        placeholder="ABC123"
-        maxLength={6}
-        className="flex-1 h-9 rounded-lg text-center text-[15px] tracking-[0.25em] uppercase outline-none transition-all font-mono bg-secondary border border-border text-foreground placeholder:text-muted-foreground placeholder:tracking-[0.2em] placeholder:text-[13px] placeholder:font-sans focus:border-[rgba(193,185,126,0.3)] focus:shadow-[0_0_0_3px_rgba(193,185,126,0.12)]"
+      <NewSessionForm
+        orgs={orgs}
+        currentOrg={currentOrg}
+        onCreate={handleCreateSession}
       />
-      <button
-        type="submit"
-        disabled={loading || !valid}
-        className="h-9 px-5 rounded-lg border border-border bg-transparent text-[13px] font-medium text-muted-foreground cursor-pointer transition-all hover:border-[var(--border)] hover:text-foreground hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        {loading ? "Joining..." : "Join"}
-      </button>
-      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
-    </form>
+      <SessionList
+        groups={activeSessionGroups}
+        loading={sessionsLoading}
+        userId={user.id}
+        onJoin={handleJoinSession}
+      />
+    </ManagementPanel>
   );
 }

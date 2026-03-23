@@ -16,7 +16,7 @@ export function TestUserApp() {
     joinSession,
     createSession,
     leaveSession,
-  } = useSessions(user?.id, currentOrg?.id);
+  } = useSessions(user?.id);
 
   // Login form state
   const [email, setEmail] = useState("");

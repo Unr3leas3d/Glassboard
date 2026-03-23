@@ -71,27 +71,14 @@ export function ManagementPanel({
           </div>
         )}
 
-        {/* Session card */}
+        {/* Session area */}
         {loading ? (
-          <div className="relative bg-card rounded-xl p-5 space-y-4 overflow-hidden"
-            style={{ border: '1px solid rgba(193,185,126,0.18)' }}
-          >
-            <Skeleton className="h-4 w-28" />
-            <div className="flex gap-2">
-              <Skeleton className="h-9 flex-1 rounded-md" />
-              <Skeleton className="h-9 w-16 rounded-md" />
-            </div>
+          <div className="space-y-3">
+            <div className="h-9 rounded-lg bg-secondary animate-pulse" />
+            <div className="h-16 rounded-lg bg-secondary animate-pulse" />
           </div>
         ) : currentOrg ? (
-          <div className="relative bg-card rounded-xl p-6 space-y-4 overflow-hidden"
-            style={{
-              border: '1px solid rgba(193,185,126,0.18)',
-              backgroundImage: 'radial-gradient(ellipse 70% 40% at 50% 0%, rgba(193,185,126,0.06) 0%, transparent 70%)',
-            }}
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--gold-dim)]">
-              Session
-            </p>
+          <div className="space-y-4">
             {children}
           </div>
         ) : (
