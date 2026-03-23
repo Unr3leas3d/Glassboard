@@ -31,7 +31,6 @@ function buildInitialUiState(payload: BottomBarPayload): SessionUiState {
 export function SessionWidget() {
   const [payload] = useState<BottomBarPayload>(readPayload);
   const [uiState, setUiState] = useState<SessionUiState>(buildInitialUiState(payload));
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const unlisten = listen<OverlayStatePayload>(EVENTS.OVERLAY_STATE, (e) => {
@@ -45,13 +44,6 @@ export function SessionWidget() {
   const session = uiState.session ?? payload.session;
   const participants: PresenceUser[] =
     uiState.participants.length > 0 ? uiState.participants : payload.participants ?? [];
-
-  const copyCode = useCallback(() => {
-    if (!session) return;
-    navigator.clipboard.writeText(session.join_code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, [session]);
 
   const endSession = useCallback(() => {
     if (session) {
@@ -70,17 +62,6 @@ export function SessionWidget() {
           <div className="text-sm font-medium text-white truncate">
             {session.title}
           </div>
-        )}
-
-        {session && (
-          <button
-            onClick={copyCode}
-            className="flex items-center gap-1.5 self-start rounded-md bg-zinc-800 px-2.5 py-1.5 text-xs font-mono text-zinc-300 transition-colors hover:bg-zinc-700"
-            title="Click to copy join code"
-          >
-            <span className="tracking-widest text-sm">{session.join_code}</span>
-            <span className="text-zinc-500">{copied ? "Copied!" : "Copy"}</span>
-          </button>
         )}
 
         <div>
