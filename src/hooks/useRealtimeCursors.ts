@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { RefObject } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { userColor } from "../utils/userColor";
 
 export interface RemoteCursorState {
   userId: string;
@@ -14,16 +15,6 @@ export interface RemoteCursorState {
 
 const THROTTLE_MS = 50;
 const STALE_MS = 5000;
-
-/** Deterministic color from userId */
-function userColor(userId: string): string {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    hash = (hash * 31 + userId.charCodeAt(i)) | 0;
-  }
-  const hue = ((hash % 360) + 360) % 360;
-  return `hsl(${hue}, 70%, 60%)`;
-}
 
 export function useRealtimeCursors(
   channelRef: RefObject<RealtimeChannel | null>,

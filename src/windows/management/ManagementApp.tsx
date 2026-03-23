@@ -19,6 +19,8 @@ import { WindowTitleBar } from "../../components/WindowTitleBar";
 import { Skeleton } from "../../components/ui/skeleton";
 import { CreateSessionButton } from "../../components/session/CreateSessionButton";
 import { supabase } from "../../supabase";
+import { sessionWindowCoordinator } from "../../services/sessionWindows/coordinator";
+import { recordSessionWindowDebug } from "../../services/sessionWindows/debug";
 import type { OverlayPayload } from "../../types/events";
 import { EVENTS } from "../../types/events";
 import type { Session } from "../../hooks/useSessions";
@@ -84,13 +86,7 @@ export function ManagementApp() {
 
   // Destroy overlay and its child UI windows
   const destroyOverlay = useCallback(async () => {
-    // Destroy UI windows that the overlay may have spawned
-    for (const label of ["bottombar", "sessionbar"]) {
-      try {
-        const win = await WebviewWindow.getByLabel(label);
-        await win?.destroy();
-      } catch { /* already destroyed */ }
-    }
+    await sessionWindowCoordinator.destroyAll();
     try {
       if (overlayRef.current) {
         await overlayRef.current.destroy();
@@ -162,6 +158,11 @@ export function ManagementApp() {
       const url = `${baseUrl}?window=overlay&payload=${encodedPayload}`;
 
       try {
+        recordSessionWindowDebug("management:spawn-overlay", {
+          sessionId: session.id,
+          userId: user.id,
+        });
+
         const overlay = new WebviewWindow("overlay", {
           url,
           transparent: true,
@@ -174,11 +175,13 @@ export function ManagementApp() {
 
         overlay.once("tauri://error", (e) => {
           console.error("[Glassboard] Overlay window error:", e);
+          recordSessionWindowDebug("management:overlay-error", e);
           setOverlayError("Failed to open overlay window. Please try again.");
           overlayRef.current = null;
         });
 
         overlay.once("tauri://destroyed", () => {
+          recordSessionWindowDebug("management:overlay-destroyed");
           // Only run crash recovery if session-ended hasn't already handled cleanup
           if (overlayRef.current) {
             overlayRef.current = null;
@@ -191,10 +194,12 @@ export function ManagementApp() {
 
         // Wait for overlay to be created before hiding management
         overlay.once("tauri://created", async () => {
+          recordSessionWindowDebug("management:overlay-created");
           await getCurrentWindow().hide();
         });
       } catch (err) {
         console.error("[Glassboard] Failed to create overlay:", err);
+        recordSessionWindowDebug("management:overlay-create-threw", err);
         setOverlayError("Failed to open overlay window. Please try again.");
       }
     },

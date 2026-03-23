@@ -1,21 +1,23 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { initPlatform } from "@/utils/platform";
+import {
+  ALWAYS_DARK_WINDOW_TYPES,
+  TRANSPARENT_WINDOW_TYPES,
+} from "@/services/sessionWindows/definitions";
 import "./App.css";
 
 const params = new URLSearchParams(window.location.search);
 const windowType = params.get("window");
 
 // Transparent window types need transparent html/body
-const transparentWindows = ["overlay", "bottombar"];
-if (transparentWindows.includes(windowType ?? "")) {
+if (TRANSPARENT_WINDOW_TYPES.includes((windowType ?? "") as (typeof TRANSPARENT_WINDOW_TYPES)[number])) {
   document.documentElement.classList.add("overlay-window");
   document.body.classList.add("overlay-window");
 }
 
 // Theme initialization (synchronous, before React renders to prevent FOUC)
-const alwaysDarkWindows = ["overlay", "bottombar", "sessionbar", "testuser"];
-if (alwaysDarkWindows.includes(windowType ?? "")) {
+if (ALWAYS_DARK_WINDOW_TYPES.includes((windowType ?? "") as (typeof ALWAYS_DARK_WINDOW_TYPES)[number])) {
   document.documentElement.classList.add("dark");
 } else {
   // Management / landing windows: read persisted theme
@@ -48,9 +50,18 @@ async function renderApp() {
   if (windowType === "overlay") {
     const { OverlayApp } = await import("./windows/overlay/OverlayApp");
     AppComponent = OverlayApp;
-  } else if (windowType === "bottombar") {
-    const { BottomBarApp } = await import("./windows/bottombar/BottomBarApp");
-    AppComponent = BottomBarApp;
+  } else if (windowType === "dock") {
+    const { DockApp } = await import("./windows/dock/DockApp");
+    AppComponent = DockApp;
+  } else if (windowType === "chat") {
+    const { ChatWidget } = await import("./widgets/chat/ChatWidget");
+    AppComponent = ChatWidget;
+  } else if (windowType === "screen-share") {
+    const { ScreenShareWidget } = await import("./widgets/screen-share/ScreenShareWidget");
+    AppComponent = ScreenShareWidget;
+  } else if (windowType === "session") {
+    const { SessionWidget } = await import("./widgets/session/SessionWidget");
+    AppComponent = SessionWidget;
   } else if (windowType === "testuser") {
     const { TestUserApp } = await import("./windows/testuser/TestUserApp");
     AppComponent = TestUserApp;
