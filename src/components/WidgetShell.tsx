@@ -28,22 +28,30 @@ export function WidgetShell({
 
   const handlePin = useCallback(async () => {
     const next = !pinned;
-    setPinned(next);
-    await getCurrentWindow().setAlwaysOnTop(next);
+    try {
+      await getCurrentWindow().setAlwaysOnTop(next);
+      setPinned(next);
+    } catch (err) {
+      console.error("[WidgetShell] Failed to set always-on-top:", err);
+    }
   }, [pinned]);
 
   const handleCollapse = useCallback(async () => {
-    if (collapsed) {
-      await sessionWindowCoordinator.expandWidget(widgetId);
-      setCollapsed(false);
-    } else {
-      await sessionWindowCoordinator.collapseWidget(widgetId);
-      setCollapsed(true);
+    try {
+      if (collapsed) {
+        await sessionWindowCoordinator.expandWidget(widgetId);
+        setCollapsed(false);
+      } else {
+        await sessionWindowCoordinator.collapseWidget(widgetId);
+        setCollapsed(true);
+      }
+    } catch (err) {
+      console.error("[WidgetShell] Failed to toggle collapse:", err);
     }
   }, [widgetId, collapsed]);
 
   const handleClose = useCallback(async () => {
-    await sessionWindowCoordinator.closeWidget(widgetId);
+    sessionWindowCoordinator.closeWidget(widgetId).catch(console.error);
   }, [widgetId]);
 
   if (collapsed) {
