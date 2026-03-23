@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { Session } from "../../hooks/useSessions";
 
@@ -7,18 +6,10 @@ interface SessionBarProps {
   isHost: boolean;
   onEnd: (sessionId: string) => void;
   onLeave: () => void;
-  children?: React.ReactNode; // participant list slot
+  children?: React.ReactNode;
 }
 
 export function SessionBar({ session, isHost, onEnd, onLeave, children }: SessionBarProps) {
-  const [copied, setCopied] = useState(false);
-
-  function copyCode() {
-    navigator.clipboard.writeText(session.join_code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
   return (
     <div className="glasboard-session-bar">
       <div className="flex items-center gap-3">
@@ -27,15 +18,6 @@ export function SessionBar({ session, isHost, onEnd, onLeave, children }: Sessio
             {session.title}
           </span>
         )}
-
-        <button
-          onClick={copyCode}
-          className="flex items-center gap-1.5 rounded-md bg-zinc-800 px-2.5 py-1 text-xs font-mono text-zinc-300 hover:bg-zinc-700 transition-colors"
-          title="Click to copy join code"
-        >
-          <span className="tracking-widest">{session.join_code}</span>
-          <span className="text-zinc-500">{copied ? "Copied!" : "Copy"}</span>
-        </button>
       </div>
 
       {children}
