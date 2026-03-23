@@ -14,14 +14,15 @@ interface SessionExitDialogProps {
   pending: boolean;
   error: string | null;
   onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
 }
 
 export function SessionExitDialog(props: SessionExitDialogProps) {
   const title =
     props.mode === "end" ? "End session for everyone?" : "Leave this session?";
   const confirmLabel = props.mode === "end" ? "End Session" : "Leave Session";
-  const confirmDisabled = true;
+  const pendingLabel = props.mode === "end" ? "Ending..." : "Leaving...";
+  const confirmDisabled = props.pending;
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -35,15 +36,12 @@ export function SessionExitDialog(props: SessionExitDialogProps) {
           </DialogDescription>
         </DialogHeader>
         {props.error && <p className="text-xs text-red-400">{props.error}</p>}
-        <p className="text-xs text-muted-foreground">
-          Confirmation will be enabled in the next step.
-        </p>
         <DialogFooter>
-          <Button variant="outline" onClick={() => props.onOpenChange(false)}>
+          <Button variant="outline" disabled={props.pending} onClick={() => props.onOpenChange(false)}>
             Cancel
           </Button>
           <Button variant="destructive" disabled={confirmDisabled} onClick={props.onConfirm}>
-            {confirmLabel}
+            {props.pending ? pendingLabel : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

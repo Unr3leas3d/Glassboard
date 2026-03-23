@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { listen, emit } from "@tauri-apps/api/event";
 import { SessionBar } from "../../components/session/SessionBar";
 import { ParticipantList } from "../../components/session/ParticipantList";
+import { decodeWindowPayload } from "../../services/sessionWindows/payload";
 import { EVENTS } from "../../types/events";
 import type { SessionBarPayload, OverlayStatePayload } from "../../types/events";
 import type { Session } from "../../hooks/useSessions";
@@ -9,9 +10,10 @@ import type { PresenceUser } from "../../hooks/usePresence";
 
 function readPayload(): SessionBarPayload {
   const params = new URLSearchParams(window.location.search);
-  const raw = params.get("payload");
-  if (!raw) throw new Error("No payload in sessionbar URL");
-  return JSON.parse(atob(raw));
+  return decodeWindowPayload<SessionBarPayload>(
+    params.get("payload"),
+    "No payload in sessionbar URL",
+  );
 }
 
 export function SessionBarApp() {

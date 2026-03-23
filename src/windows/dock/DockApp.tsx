@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { DockIcon } from "../../components/DockIcon";
 import { recordSessionWindowDebug } from "../../services/sessionWindows/debug";
+import { decodeWindowPayload } from "../../services/sessionWindows/payload";
 import { EVENTS } from "../../types/events";
 import type {
   BottomBarPayload,
@@ -25,12 +26,7 @@ import { modifierLabel } from "../../utils/platform";
 
 function readPayload(): BottomBarPayload {
   const params = new URLSearchParams(window.location.search);
-  const raw = params.get("payload");
-  if (!raw) {
-    return { isLaserActive: false, screenshotsEnabled: false, isSharing: false };
-  }
-
-  return JSON.parse(atob(raw));
+  return decodeWindowPayload<BottomBarPayload>(params.get("payload"), "No payload in dock URL");
 }
 
 function buildInitialUiState(payload: BottomBarPayload): SessionUiState {

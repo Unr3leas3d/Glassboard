@@ -4,6 +4,7 @@ import { emitTo } from "@tauri-apps/api/event";
 import { WidgetShell } from "../../components/WidgetShell";
 import { useSessionChannel } from "../../hooks/useSessionChannel";
 import { useRealtimeChat } from "../../hooks/useRealtimeChat";
+import { decodeWindowPayload } from "../../services/sessionWindows/payload";
 import { userColor } from "../../utils/userColor";
 import { Send } from "lucide-react";
 import { EVENTS } from "../../types/events";
@@ -18,9 +19,7 @@ interface ChatPayload {
 
 function readPayload(): ChatPayload {
   const params = new URLSearchParams(window.location.search);
-  const raw = params.get("payload");
-  if (!raw) throw new Error("No payload in chat URL");
-  return JSON.parse(atob(raw));
+  return decodeWindowPayload<ChatPayload>(params.get("payload"), "No payload in chat URL");
 }
 
 function formatTime(ts: number): string {

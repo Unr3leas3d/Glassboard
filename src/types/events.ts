@@ -64,6 +64,23 @@ export interface WidgetStateChangePayload {
   unreadCount?: number;
 }
 
+export interface OverlayValidationRequestPayload {
+  requestId: string;
+  expectedUserId: string;
+  sessionId: string;
+}
+
+export interface OverlayValidationResultPayload {
+  requestId: string;
+  valid: boolean;
+  reason:
+    | "verified"
+    | "auth-mismatch"
+    | "auth-missing"
+    | "session-ended"
+    | "session-lookup-error";
+}
+
 /** Tauri event names for cross-window communication */
 export const EVENTS = {
   // Management ↔ Overlay
@@ -71,6 +88,8 @@ export const EVENTS = {
   REQUEST_SHOW_MANAGEMENT: "request-show-management",
   REQUEST_SIGN_OUT: "request-sign-out",
   DEACTIVATE_LASER: "deactivate-laser",
+  REQUEST_OVERLAY_VALIDATION: "request-overlay-validation",
+  OVERLAY_VALIDATION_RESULT: "overlay-validation-result",
 
   // Overlay → UI windows (state broadcasts)
   OVERLAY_STATE: "overlay:state",

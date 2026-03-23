@@ -1,7 +1,7 @@
 // src/windows/overlay/OverlayApp.tsx
 import { useRef, useState, useCallback, useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { emit, listen } from "@tauri-apps/api/event";
+import { emit, emitTo, listen } from "@tauri-apps/api/event";
 import { useGlobalHotkey } from "../../hooks/useGlobalHotkey";
 import { useHotkeySettings } from "../../hooks/useHotkeySettings";
 import { useLaserMode } from "../../hooks/useLaserMode";
@@ -29,6 +29,7 @@ import type {
   OpenSessionWindowPayload,
   OverlayPayload,
   OverlayStatePayload,
+  OverlayValidationResultPayload,
   SessionUiState,
   ShareScreenCommandPayload,
   WidgetStateChangePayload,
@@ -70,86 +71,90 @@ export function OverlayApp() {
   const [verified, setVerified] = useState(false);
   useEffect(() => {
     let cancelled = false;
+    const requestId = crypto.randomUUID();
+    const currentWindow = getCurrentWindow();
 
-    (async () => {
-      const currentWindow = getCurrentWindow();
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+    const teardownOverlay = async (options?: { emitSessionEnded?: boolean }) => {
+      await sessionWindowCoordinator.destroyAll().catch(() => {});
 
-      if (cancelled) {
-        return;
-      }
-
-      if (userError) {
-        console.error("[Glassboard] Failed to verify overlay auth:", userError);
-        recordSessionWindowDebug("overlay:auth-error", userError);
-        await sessionWindowCoordinator.destroyAll().catch(() => {});
-        await currentWindow.destroy().catch(() => {});
-        return;
-      }
-
-      if (!user || user.id !== userId) {
-        console.error("[Glassboard] Overlay auth mismatch — destroying window");
-        recordSessionWindowDebug("overlay:auth-mismatch", {
-          expectedUserId: userId,
-          actualUserId: user?.id ?? null,
-        });
-        await sessionWindowCoordinator.destroyAll().catch(() => {});
-        await currentWindow.destroy().catch(() => {});
-        return;
-      }
-
-      const { data: sessionData, error: sessionError } = await supabase
-        .from("sessions")
-        .select("*")
-        .eq("id", initialSession.id)
-        .eq("status", "active")
-        .single();
-
-      if (cancelled) {
-        return;
-      }
-
-      if (sessionError) {
-        console.error(
-          "[Glassboard] Failed to verify session status; keeping overlay active:",
-          sessionError,
-        );
-        recordSessionWindowDebug("overlay:session-lookup-error", sessionError);
-        setVerified(true);
-        return;
-      }
-
-      if (!sessionData) {
-        console.error("[Glassboard] Session no longer active — destroying overlay");
-        recordSessionWindowDebug("overlay:session-ended", {
-          sessionId: initialSession.id,
-        });
-        await sessionWindowCoordinator.destroyAll().catch(() => {});
+      if (options?.emitSessionEnded) {
         await emit(EVENTS.SESSION_ENDED).catch(() => {});
-        await currentWindow.destroy().catch(() => {});
+      }
+
+      await currentWindow.destroy().catch(() => {});
+    };
+
+    const unlistenPromise = listen<OverlayValidationResultPayload>(
+      EVENTS.OVERLAY_VALIDATION_RESULT,
+      async (event) => {
+        if (cancelled || event.payload.requestId !== requestId) {
+          return;
+        }
+
+        cancelled = true;
+        window.clearTimeout(timeoutId);
+
+        if (event.payload.valid) {
+          recordSessionWindowDebug("overlay:verified", {
+            sessionId: initialSession.id,
+            reason: event.payload.reason,
+          });
+          setVerified(true);
+          return;
+        }
+
+        recordSessionWindowDebug("overlay:validation-failed", {
+          sessionId: initialSession.id,
+          reason: event.payload.reason,
+        });
+
+        if (event.payload.reason === "session-ended") {
+          await teardownOverlay({ emitSessionEnded: true });
+          return;
+        }
+
+        await teardownOverlay();
+      },
+    );
+
+    const timeoutId = window.setTimeout(() => {
+      if (cancelled) {
         return;
       }
 
-      recordSessionWindowDebug("overlay:verified", {
+      cancelled = true;
+      recordSessionWindowDebug("overlay:validation-timeout", {
         sessionId: initialSession.id,
       });
-      setVerified(true);
+      teardownOverlay().catch(() => {});
+    }, 5000);
+
+    (async () => {
+      recordSessionWindowDebug("overlay:request-validation", {
+        sessionId: initialSession.id,
+        userId,
+      });
+      await emitTo("management", EVENTS.REQUEST_OVERLAY_VALIDATION, {
+        requestId,
+        expectedUserId: userId,
+        sessionId: initialSession.id,
+      });
     })().catch(async (error) => {
       if (cancelled) {
         return;
       }
 
+      cancelled = true;
+      window.clearTimeout(timeoutId);
       console.error("[Glassboard] Overlay startup failed:", error);
       recordSessionWindowDebug("overlay:startup-failed", error);
-      await sessionWindowCoordinator.destroyAll().catch(() => {});
-      await getCurrentWindow().destroy().catch(() => {});
+      await teardownOverlay();
     });
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timeoutId);
+      unlistenPromise.then((fn) => fn());
     };
   }, [initialSession.id, userId]);
 
@@ -297,11 +302,17 @@ export function OverlayApp() {
   const { getBinding } = useHotkeySettings();
   const handleSessionExitDialogOpenChange = useCallback(
     (open: boolean) => {
-      setSessionExitDialog({
-        open,
-        mode: isHost ? "end" : "leave",
-        pending: false,
-        error: null,
+      setSessionExitDialog((current) => {
+        if (current.pending) {
+          return current;
+        }
+
+        return {
+          open,
+          mode: isHost ? "end" : "leave",
+          pending: false,
+          error: null,
+        };
       });
     },
     [isHost],
@@ -320,8 +331,6 @@ export function OverlayApp() {
       error: null,
     });
   }, [isHost, sessionExitDialog.open]);
-
-  const handleSessionExitDialogConfirm = useCallback(() => {}, []);
 
   const handleToggleLaser = useCallback(() => {
     if (sessionExitDialog.open) {
@@ -422,31 +431,68 @@ export function OverlayApp() {
 
   const handleEndSession = useCallback(
     async (sessionId: string) => {
-      if (!isHost) return;
-
-      const { error } = await supabase
-        .from("sessions")
-        .update({ status: "ended", ended_at: new Date().toISOString() })
-        .eq("id", sessionId)
-        .eq("host_id", userId);
-
-      if (error) {
-        console.error("[Glassboard] Failed to end session:", error);
-        return;
+      if (!isHost) {
+        return "Only the host can end this session.";
       }
 
-      await destroyUIWindows();
-      await emit(EVENTS.SESSION_ENDED);
-      await getCurrentWindow().destroy();
+      try {
+        const { error } = await supabase
+          .from("sessions")
+          .update({ status: "ended", ended_at: new Date().toISOString() })
+          .eq("id", sessionId)
+          .eq("host_id", userId);
+
+        if (error) {
+          console.error("[Glassboard] Failed to end session:", error);
+          return "Failed to end the session. Please try again.";
+        }
+
+        await destroyUIWindows();
+        await emit(EVENTS.SESSION_ENDED);
+        await getCurrentWindow().destroy();
+        return null;
+      } catch (error) {
+        console.error("[Glassboard] Failed to end session:", error);
+        return "Failed to end the session. Please try again.";
+      }
     },
     [isHost, userId, destroyUIWindows],
   );
 
   const handleLeaveSession = useCallback(async () => {
-    await destroyUIWindows();
-    await emit(EVENTS.SESSION_ENDED);
-    await getCurrentWindow().destroy();
+    try {
+      await destroyUIWindows();
+      await emit(EVENTS.SESSION_ENDED);
+      await getCurrentWindow().destroy();
+      return null;
+    } catch (error) {
+      console.error("[Glassboard] Failed to leave session:", error);
+      return "Failed to leave the session. Please try again.";
+    }
   }, [destroyUIWindows]);
+
+  const handleSessionExitDialogConfirm = useCallback(async () => {
+    const mode = sessionExitDialog.mode;
+
+    setSessionExitDialog((current) => ({
+      ...current,
+      pending: true,
+      error: null,
+    }));
+
+    const error =
+      mode === "end" ? await handleEndSession(session.id) : await handleLeaveSession();
+
+    if (!error) {
+      return;
+    }
+
+    setSessionExitDialog((current) => ({
+      ...current,
+      pending: false,
+      error,
+    }));
+  }, [handleEndSession, handleLeaveSession, session.id, sessionExitDialog.mode]);
 
   const handleShowManagement = useCallback(async () => {
     if (isLaserActive) {
