@@ -5,25 +5,23 @@ export interface Session {
   id: string;
   org_id: string;
   host_id: string;
-  join_code: string;
   title: string | null;
   status: "active" | "ended";
   created_at: string;
   ended_at: string | null;
 }
 
-export function useSessions(userId: string | undefined, orgId: string | undefined) {
+export function useSessions(userId: string | undefined) {
   const [activeSession, setActiveSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const createSession = useCallback(
-    async (title?: string) => {
-      if (!userId || !orgId) return null;
+    async (orgId: string, title?: string) => {
+      if (!userId) return null;
       setLoading(true);
       setError(null);
 
-      // join_code is generated server-side by generate_join_code() default
       const { data, error: err } = await supabase
         .from("sessions")
         .insert({
@@ -45,21 +43,33 @@ export function useSessions(userId: string | undefined, orgId: string | undefine
       setLoading(false);
       return data as Session;
     },
-    [userId, orgId],
+    [userId],
   );
 
   const joinSession = useCallback(
-    async (code: string) => {
+    async (sessionId: string) => {
       if (!userId) return null;
       setLoading(true);
       setError(null);
 
-      const { data, error: err } = await supabase
-        .rpc("join_session_by_code", { input_join_code: code.toUpperCase() })
+      const { error: insertErr } = await supabase
+        .from("session_participants")
+        .insert({ session_id: sessionId, user_id: userId });
+
+      if (insertErr) {
+        setError(insertErr.message);
+        setLoading(false);
+        return null;
+      }
+
+      const { data, error: fetchErr } = await supabase
+        .from("sessions")
+        .select()
+        .eq("id", sessionId)
         .single();
 
-      if (err || !data) {
-        setError("Session not found or has ended.");
+      if (fetchErr || !data) {
+        setError("Failed to load session details.");
         setLoading(false);
         return null;
       }
@@ -87,9 +97,19 @@ export function useSessions(userId: string | undefined, orgId: string | undefine
     [],
   );
 
-  const leaveSession = useCallback(() => {
-    setActiveSession(null);
-  }, []);
+  const leaveSession = useCallback(
+    async (sessionId?: string) => {
+      if (sessionId && userId) {
+        await supabase
+          .from("session_participants")
+          .delete()
+          .eq("session_id", sessionId)
+          .eq("user_id", userId);
+      }
+      setActiveSession(null);
+    },
+    [userId],
+  );
 
   return {
     activeSession,
