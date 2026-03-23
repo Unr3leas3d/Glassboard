@@ -90,13 +90,6 @@ Cancel closes the dialog and does nothing else.
 
 If the shortcut is pressed while the confirmation dialog is already open, the app should keep focus on the existing dialog rather than opening a second copy.
 
-While the dialog is open, the overlay must temporarily disable click-through so the modal can receive pointer and keyboard input. This temporary interaction state is separate from laser mode:
-
-- opening the dialog sets overlay cursor handling to interactive even if laser mode is currently off
-- opening the dialog does not activate the laser tool
-- closing the dialog without exiting restores the pre-dialog click-through state
-- if the exit action succeeds, normal session teardown wins and no state restoration is needed
-
 ## Architecture And Data Flow
 
 ### Ownership
@@ -154,8 +147,6 @@ Requirements:
 - single overlay-owned dialog instance
 - role-aware title, description, and confirm button text
 - destructive styling for the confirm action
-- opening the dialog temporarily disables click-through and focuses the dialog surface
-- closing the dialog restores the overlay's pre-dialog click-through state unless the session exits
 - cancel path leaves the session untouched
 - dialog can show an inline error message if the confirmed action fails
 
