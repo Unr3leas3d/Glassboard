@@ -77,22 +77,8 @@ export function TestUserSession({ session, userId, userName, userAvatarUrl, onLe
 
         {/* Session info */}
         <div>
-          <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginBottom: 4 }}>
-            JOIN CODE
-          </div>
-          <div
-            style={{
-              fontFamily: "monospace",
-              fontSize: 20,
-              fontWeight: 700,
-              color: "#fff",
-              letterSpacing: 3,
-            }}
-          >
-            {session.join_code}
-          </div>
           {session.title && (
-            <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 4 }}>
+            <div style={{ color: "#fff", fontSize: 15, fontWeight: 600 }}>
               {session.title}
             </div>
           )}

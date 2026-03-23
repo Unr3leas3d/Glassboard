@@ -13,7 +13,6 @@ export function TestUserApp() {
     activeSession,
     loading: sessionLoading,
     error: sessionError,
-    joinSession,
     createSession,
     leaveSession,
   } = useSessions(user?.id);
@@ -25,8 +24,6 @@ export function TestUserApp() {
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [authMessage, setAuthMessage] = useState<string | null>(null);
 
-  // Join form state
-  const [joinCode, setJoinCode] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,14 +39,9 @@ export function TestUserApp() {
     }
   };
 
-  const handleJoin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (joinCode.length < 6) return;
-    await joinSession(joinCode);
-  };
-
   const handleCreate = async () => {
-    await createSession("Test Session");
+    if (!currentOrg) return;
+    await createSession(currentOrg.id, "Test Session");
   };
 
   const handleLeave = () => {
@@ -233,53 +225,6 @@ export function TestUserApp() {
               </button>
             </div>
 
-            <form
-              onSubmit={handleJoin}
-              style={{ display: "flex", flexDirection: "column", gap: 12 }}
-            >
-              <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 600, letterSpacing: 1 }}>
-                JOIN SESSION
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input
-                  type="text"
-                  placeholder="Enter 6-char code"
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value.toUpperCase().slice(0, 6))}
-                  maxLength={6}
-                  style={{
-                    flex: 1,
-                    padding: "10px 14px",
-                    borderRadius: 8,
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    background: "rgba(255,255,255,0.05)",
-                    color: "#fff",
-                    fontSize: 16,
-                    fontFamily: "monospace",
-                    letterSpacing: 3,
-                    textAlign: "center",
-                    outline: "none",
-                  }}
-                />
-                <button
-                  type="submit"
-                  disabled={joinCode.length < 6 || sessionLoading}
-                  style={{
-                    padding: "10px 18px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: joinCode.length >= 6 ? "#7c3aed" : "rgba(255,255,255,0.1)",
-                    color: joinCode.length >= 6 ? "#fff" : "rgba(255,255,255,0.3)",
-                    fontSize: 14,
-                    fontWeight: 500,
-                    cursor: joinCode.length >= 6 ? "pointer" : "default",
-                  }}
-                >
-                  Join
-                </button>
-              </div>
-            </form>
-
             {currentOrg && (
               <div>
                 <div
@@ -291,7 +236,7 @@ export function TestUserApp() {
                     marginBottom: 8,
                   }}
                 >
-                  OR CREATE NEW
+                  CREATE SESSION
                 </div>
                 <button
                   onClick={handleCreate}
