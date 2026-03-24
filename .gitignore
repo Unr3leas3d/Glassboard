@@ -38,6 +38,7 @@ target
 .claude/
 .playwright-mcp/
 .superpowers/
+.worktrees/
 
 # Agent-generated plans
 docs/superpowers/plans/
